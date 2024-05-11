@@ -22,4 +22,4 @@ builds:
     - amd64
     - arm64
   ignore: []
-  binary: '{{ .ProjectName }}_v{{ .Version }}'
+  binary: '{{ .ProjectName }}'
