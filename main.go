@@ -5,15 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type TailscaleStatus struct {
@@ -150,7 +152,12 @@ func TailscaleGetStatus(ctx context.Context) (*TailscaleStatus, error) {
 	return &status, nil
 }
 
-func getListenAddr() (string, error) {
+func getListenHost() (string, error) {
+	envListenHost := os.Getenv("LISTEN_HOST")
+	if envListenHost != "" {
+		return envListenHost, nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	status, err := TailscaleGetStatus(ctx)
@@ -166,16 +173,24 @@ func getListenAddr() (string, error) {
 	return ips[0], nil
 }
 
+func getListenPort() string {
+	envListenPort := os.Getenv("LISTEN_PORT")
+	if envListenPort == "" {
+		return "9995"
+	}
+	return envListenPort
+}
+
 func main() {
-	ip, err := getListenAddr()
+	ip, err := getListenHost()
 	if err != nil {
 		panic(err)
 	}
-	listen := ip + ":9995"
+	listen := ip + ":" + getListenPort()
 	go func() {
 		errors := 0
 		for {
-			newIp, err := getListenAddr()
+			newIp, err := getListenHost()
 			if err != nil {
 				errors++
 				if errors > 20 {
